@@ -65,7 +65,7 @@ void SplashPackLoader::LoadSplashpack(uint8_t *data, SplashpackSceneSetup &setup
         curentPointer += sizeof(psxsplash::LuaFile);
     }
 
-    setup.sceneLuaFile = setup.luaFiles[header->sceneLuaFileIndex];
+    setup.sceneLuaFileIndex = header->sceneLuaFileIndex;
 
     for (uint16_t i = 0; i < header->gameObjectCount; i++) {
         psxsplash::GameObject *go = reinterpret_cast<psxsplash::GameObject *>(curentPointer);

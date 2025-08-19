@@ -6,7 +6,7 @@
 
 #include "gameobject.hh"
 
-constexpr const char METATABLE_SCRIPT[] = R"(
+constexpr const char GAMEOBJECT_SCRIPT[] = R"(
 return function(metatable)
     local get_position = metatable.get_position
     local set_position = metatable.set_position
@@ -36,16 +36,13 @@ end
 static int gameobjectSetPosition(psyqo::Lua L) {
     auto go = L.toUserdata<psxsplash::GameObject>(1);
     L.getField(2, "x");
-    psyqo::FixedPoint<> x(L.toNumber(3), psyqo::FixedPoint<>::RAW);
-    go->position.x = x;
+    go->position.x = L.toFixedPoint(3);
     L.pop();
     L.getField(2, "y");
-    psyqo::FixedPoint<> y(L.toNumber(3), psyqo::FixedPoint<>::RAW);
-    go->position.y = y;
+    go->position.y = L.toFixedPoint(3);
     L.pop();
     L.getField(2, "z");
-    psyqo::FixedPoint<> z(L.toNumber(3), psyqo::FixedPoint<>::RAW);
-    go->position.z = z;
+    go->position.z = L.toFixedPoint(3);
     L.pop();
     return 0;
 }
@@ -53,18 +50,19 @@ static int gameobjectSetPosition(psyqo::Lua L) {
 static int gameobjectGetPosition(psyqo::Lua L) {
     auto go = L.toUserdata<psxsplash::GameObject>(1);
     L.newTable();
-    L.pushNumber(go->position.x.raw());
+    L.push(go->position.x);
     L.setField(2, "x");
-    L.pushNumber(go->position.y.raw());
+    L.push(go->position.y);
     L.setField(2, "y");
-    L.pushNumber(go->position.z.raw());
+    L.push(go->position.z);
     L.setField(2, "z");
     return 1;
 }
 
 void psxsplash::Lua::Init() {
-    // Load and run the metatable script
-    if (L.loadBuffer(METATABLE_SCRIPT, "buffer:metatableForAllGameObjects") == 0) {
+    auto L = m_state;
+    // Load and run the game objects script
+    if (L.loadBuffer(GAMEOBJECT_SCRIPT, "buffer:gameObjects") == 0) {
         if (L.pcall(0, 1) == 0) {
             // This will be our metatable
             L.newTable();
@@ -79,7 +77,7 @@ void psxsplash::Lua::Init() {
             m_metatableReference = L.ref();
 
             if (L.pcall(1, 0) == 0) {
-                printf("Lua script 'metatableForAllGameObjects' executed successfully");
+                printf("Lua script 'gameObjects' executed successfully");
             } else {
                 printf("Error registering Lua script: %s\n", L.optString(-1, "Unknown error"));
                 L.clearStack();
@@ -103,6 +101,7 @@ void psxsplash::Lua::Init() {
 }
 
 void psxsplash::Lua::LoadLuaFile(const char* code, size_t len, int index) {
+    auto L = m_state;
     char filename[32];
     snprintf(filename, sizeof(filename), "lua_asset:%d", index);
     if (L.loadBuffer(code, len, filename) != LUA_OK) {
@@ -130,12 +129,37 @@ void psxsplash::Lua::LoadLuaFile(const char* code, size_t len, int index) {
     }
 }
 
+void psxsplash::Lua::RegisterSceneScripts(int index) {
+    if (index < 0) return;
+    auto L = m_state;
+    L.newTable();
+    // (1) {}
+    L.copy(1);
+    // (1) {} (2) {}
+    m_luaSceneScriptsReference = L.ref();
+    // (1) {}
+    L.rawGetI(LUA_REGISTRYINDEX, m_luascriptsReference);
+    // (1) {} (2) scripts table
+    L.pushNumber(index);
+    // (1) {} (2) script environments table (2) index
+    L.getTable(-2);
+    // (1) {} (2) script environments table (3) script environment table for the scene
+    onSceneCreationStartFunctionWrapper.resolveGlobal(L);
+    onSceneCreationEndFunctionWrapper.resolveGlobal(L);
+    L.pop(3);
+    // empty stack
+}
+
+// We're going to store the Lua table for the object at the address of the object,
+// and the table for its methods at the address of the object + 1 byte.
 void psxsplash::Lua::RegisterGameObject(GameObject* go) {
-    L.push(go);
+    uint8_t* ptr = reinterpret_cast<uint8_t*>(go);
+    auto L = m_state;
+    L.push(ptr);
     // (1) go
     L.newTable();
     // (1) go (2) {}
-    L.push(go);
+    L.push(ptr);
     // (1) go (2) {} (3) go
     L.setField(-2, "__cpp_ptr");
     // (1) go (2) { __cpp_ptr = go }
@@ -150,35 +174,39 @@ void psxsplash::Lua::RegisterGameObject(GameObject* go) {
     // (1) go (2) { __cpp_ptr = go + metatable }
     L.rawSet(LUA_REGISTRYINDEX);
     // empty stack
-    printf("GameObject registered in Lua registry: %p\n", go);
+    L.newTable();
+    // (1) {}
+    L.push(ptr + 1);
+    // (1) {} (2) go + 1
+    L.copy(1);
+    // (1) {} (2) go + 1 (3) {}
+    L.rawSet(LUA_REGISTRYINDEX);
+    // (1) {}
+    if (go->luaFileIndex != -1) {
+        L.rawGetI(LUA_REGISTRYINDEX, m_luascriptsReference);
+        // (1) {} (2) script environments table
+        L.rawGetI(-1, go->luaFileIndex);
+        // (1) {} (2) script environments table (3) script environment table for this object
+        onCollisionMethodWrapper.resolveGlobal(L);
+        onInteractMethodWrapper.resolveGlobal(L);
+        L.pop(2);
+        // (1) {}
+    }
+    L.pop();
+    // empty stack
+    printf("GameObject registered in Lua registry: %p\n", ptr);
 }
 
-void psxsplash::Lua::CallOnCollide(GameObject* self, GameObject* other) {
-    if (self->luaFileIndex == -1) {
-        return;
-    }
-    L.rawGetI(LUA_REGISTRYINDEX, m_luascriptsReference);
-    // (1) scripts table
-    L.rawGetI(-1, self->luaFileIndex);
-    // (1) script table (2) script environment
-    L.getField(-1, "onCollision");
-    // (1) script table (2) script environment (3) onCollision
-    if (!L.isFunction(-1)) {
-        printf("Lua function 'onCollision' not found\n");
-        L.clearStack();
-        return;
-    }
+void psxsplash::Lua::OnCollision(GameObject* self, GameObject* other) {
+    onCollisionMethodWrapper.callMethod(*this, self, other);
+}
 
-    PushGameObject(self);
-    PushGameObject(other);
-
-    if (L.pcall(2, 0) != LUA_OK) {
-        printf("Lua error: %s\n", L.toString(-1));
-    }
-    L.clearStack();
+void psxsplash::Lua::OnInteract(GameObject* self) {
+    onInteractMethodWrapper.callMethod(*this, self);
 }
 
 void psxsplash::Lua::PushGameObject(GameObject* go) {
+    auto L = m_state;
     L.push(go);
     L.rawGet(LUA_REGISTRYINDEX);
 

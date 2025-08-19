@@ -6,6 +6,8 @@
 #include "renderer.hh"
 #include "splashpack.hh"
 
+#include "lua.h"
+
 using namespace psyqo::trig_literals;
 
 void psxsplash::SceneManager::InitializeScene(uint8_t* splashpackData) {
@@ -26,11 +28,17 @@ void psxsplash::SceneManager::InitializeScene(uint8_t* splashpackData) {
 
     m_playerHeight = sceneSetup.playerHeight;
 
-    // Load Lua files
+    // Load Lua files - order is important here. We need
+    // to load the Lua files before we register the game objects,
+    // as the game objects may reference Lua files by index.
     for (int i = 0; i < m_luaFiles.size(); i++) {
         auto luaFile = m_luaFiles[i];
         L.LoadLuaFile(luaFile->luaCode, luaFile->length, i);
     }
+
+    L.RegisterSceneScripts(sceneSetup.sceneLuaFileIndex);
+
+    L.OnSceneCreationStart();
 
     // Register game objects
     for (auto object : m_gameObjects) {
@@ -39,6 +47,8 @@ void psxsplash::SceneManager::InitializeScene(uint8_t* splashpackData) {
 
     m_controls.Init();
     Renderer::GetInstance().SetCamera(m_currentCamera);
+
+    L.OnSceneCreationEnd();
 }
 
 void psxsplash::SceneManager::GameTick() {
@@ -56,4 +66,6 @@ void psxsplash::SceneManager::GameTick() {
                                 static_cast<psyqo::FixedPoint<12>>(m_playerPosition.y),
                                 static_cast<psyqo::FixedPoint<12>>(m_playerPosition.z));
     m_currentCamera.SetRotation(playerRotationX, playerRotationY, playerRotationZ);
+
+    L.OnCollision(m_gameObjects[0], m_gameObjects[1]); // Example call, replace with actual logic
 }

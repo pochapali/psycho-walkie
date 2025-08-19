@@ -11,7 +11,7 @@
 namespace psxsplash {
 
 struct SplashpackSceneSetup {
-    LuaFile* sceneLuaFile;
+    int sceneLuaFileIndex;
     eastl::vector<LuaFile *> luaFiles;
     eastl::vector<GameObject *> objects;
     eastl::vector<Navmesh *> navmeshes;
