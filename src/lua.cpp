@@ -34,29 +34,43 @@ end
 // Lua helpers
 
 static int gameobjectSetPosition(psyqo::Lua L) {
+
     auto go = L.toUserdata<psxsplash::GameObject>(1);
+
     L.getField(2, "x");
-    go->position.x = L.toFixedPoint(3);
+    psyqo::FixedPoint<> x(L.toNumber(3), psyqo::FixedPoint<>::RAW);
+    go->position.x = x;
     L.pop();
+
     L.getField(2, "y");
-    go->position.y = L.toFixedPoint(3);
+    psyqo::FixedPoint<> y(L.toNumber(3), psyqo::FixedPoint<>::RAW);
+    go->position.y = y;
     L.pop();
     L.getField(2, "z");
-    go->position.z = L.toFixedPoint(3);
+
+    psyqo::FixedPoint<> z(L.toNumber(3), psyqo::FixedPoint<>::RAW);
+    go->position.z = z;
     L.pop();
     return 0;
+
 }
 
+
+
 static int gameobjectGetPosition(psyqo::Lua L) {
+
     auto go = L.toUserdata<psxsplash::GameObject>(1);
+
     L.newTable();
-    L.push(go->position.x);
+    L.pushNumber(go->position.x.raw());
     L.setField(2, "x");
-    L.push(go->position.y);
+    L.pushNumber(go->position.y.raw());
     L.setField(2, "y");
-    L.push(go->position.z);
+    L.pushNumber(go->position.z.raw());
     L.setField(2, "z");
+
     return 1;
+
 }
 
 void psxsplash::Lua::Init() {

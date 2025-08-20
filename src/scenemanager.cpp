@@ -67,5 +67,5 @@ void psxsplash::SceneManager::GameTick() {
                                 static_cast<psyqo::FixedPoint<12>>(m_playerPosition.z));
     m_currentCamera.SetRotation(playerRotationX, playerRotationY, playerRotationZ);
 
-    L.OnCollision(m_gameObjects[0], m_gameObjects[1]); // Example call, replace with actual logic
+    L.OnCollision(m_gameObjects[1], m_gameObjects[0]); // Example call, replace with actual logic
 }

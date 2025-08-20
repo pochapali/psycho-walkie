@@ -42,13 +42,17 @@ class Lua {
         typedef irqus::typestring<C...> methodName;
         // Needs the methods table at index 1, and the script environment table at index 3
         static void resolveGlobal(psyqo::Lua L) {
-            L.pushNumber(methodId);
-            L.getTable(3);
+            // Push the method name string to access the environment table
+            L.push(methodName::data(), methodName::size());  
+            L.getTable(3);  
+            
             if (L.isFunction(-1)) {
-                L.push(methodName::data(), methodName::size());
-                L.setTable(1);
+                // Store the function in methods table using numeric ID as key
+                L.pushNumber(methodId);     // Push numeric key for methods table
+                L.copy(-2);                 // Push the function (copy from top -2)
+                L.setTable(1);              // methodsTable[methodId] = function
             } else {
-                L.pop();
+                L.pop();  // Pop the non-function value
             }
         }
         template <typename... Args>
