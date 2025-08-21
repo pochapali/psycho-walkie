@@ -17,6 +17,8 @@ return function(metatable)
     function metatable.__index(self, key)
         if key == "position" then
             return get_position(self.__cpp_ptr)
+        elseif key == "active" then
+            return get_active(self.__cpp_ptr)
         end
         return nil
     end
@@ -25,6 +27,8 @@ return function(metatable)
         if key == "position" then
             set_position(self.__cpp_ptr, value)
             return
+        elseif key == "active" then
+            set_active(self.__cpp_ptr, value)
         end
         rawset(self, key, value)
     end
@@ -32,6 +36,23 @@ end
 )";
 
 // Lua helpers
+
+
+static int gameobjectGetPosition(psyqo::Lua L) {
+
+    auto go = L.toUserdata<psxsplash::GameObject>(1);
+
+    L.newTable();
+    L.pushNumber(go->position.x.raw());
+    L.setField(2, "x");
+    L.pushNumber(go->position.y.raw());
+    L.setField(2, "y");
+    L.pushNumber(go->position.z.raw());
+    L.setField(2, "z");
+
+    return 1;
+
+}
 
 static int gameobjectSetPosition(psyqo::Lua L) {
 
@@ -55,22 +76,17 @@ static int gameobjectSetPosition(psyqo::Lua L) {
 
 }
 
-
-
-static int gameobjectGetPosition(psyqo::Lua L) {
-
+static int gamobjectGetActive(psyqo::Lua L) {
     auto go = L.toUserdata<psxsplash::GameObject>(1);
-
-    L.newTable();
-    L.pushNumber(go->position.x.raw());
-    L.setField(2, "x");
-    L.pushNumber(go->position.y.raw());
-    L.setField(2, "y");
-    L.pushNumber(go->position.z.raw());
-    L.setField(2, "z");
-
+    L.push(go->isActive());
     return 1;
+}
 
+static int gamobjectSetActive(psyqo::Lua L) {
+    auto go = L.toUserdata<psxsplash::GameObject>(1);
+    bool active = L.toBoolean(2);
+    go->setActive(active);
+    return 0;
 }
 
 void psxsplash::Lua::Init() {
@@ -86,6 +102,12 @@ void psxsplash::Lua::Init() {
 
             L.push(gameobjectSetPosition);
             L.setField(-2, "set_position");
+
+            L.push(gamobjectGetActive);
+            L.setField(-2, "get_active");
+
+            L.push(gamobjectSetActive);
+            L.setField(-2, "set_active");
 
             L.copy(-1);
             m_metatableReference = L.ref();
