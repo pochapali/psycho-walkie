@@ -11,6 +11,7 @@ src/navmesh.cpp \
 src/lua.cpp \
 src/scenemanager.cpp \
 src/controls.cpp \
+src/profiler.cpp \
 output.o
 
 include third_party/nugget/psyqo-lua/psyqo-lua.mk

@@ -3,6 +3,7 @@
 #include <utility>
 
 #include "navmesh.hh"
+#include "profiler.hh"
 #include "renderer.hh"
 #include "splashpack.hh"
 
@@ -12,6 +13,11 @@ using namespace psyqo::trig_literals;
 
 void psxsplash::SceneManager::InitializeScene(uint8_t* splashpackData) {
     L.Init();
+
+    debug::Profiler::getInstance().initialize();
+
+
+    debug::Profiler::getInstance().initialize();
 
     SplashpackSceneSetup sceneSetup;
     m_loader.LoadSplashpack(splashpackData, sceneSetup);
@@ -43,7 +49,7 @@ void psxsplash::SceneManager::InitializeScene(uint8_t* splashpackData) {
     // Register game objects
     for (auto object : m_gameObjects) {
         L.RegisterGameObject(object);
-    }
+    }  
 
     m_controls.Init();
     Renderer::GetInstance().SetCamera(m_currentCamera);
@@ -51,21 +57,50 @@ void psxsplash::SceneManager::InitializeScene(uint8_t* splashpackData) {
     L.OnSceneCreationEnd();
 }
 
-void psxsplash::SceneManager::GameTick() {
+void psxsplash::SceneManager::GameTick(psyqo::GPU &gpu) {
+    
+    
+    uint32_t renderingStart = gpu.now();
     auto& renderer = psxsplash::Renderer::GetInstance();
-
     renderer.Render(m_gameObjects);
+    gpu.pumpCallbacks();
+    uint32_t renderingEnd = gpu.now();
+    uint32_t renderingTime = renderingEnd - renderingStart;
 
+    psxsplash::debug::Profiler::getInstance().setSectionTime(psxsplash::debug::PROFILER_RENDERING, renderingTime); 
+    uint32_t luaStart = gpu.now();
+    L.OnCollision(m_gameObjects[1], m_gameObjects[0]); // Example call, replace with actual logic
+    gpu.pumpCallbacks();
+    uint32_t luaEnd = gpu.now();
+    uint32_t luaTime = luaEnd - luaStart;
+    psxsplash::debug::Profiler::getInstance().setSectionTime(psxsplash::debug::PROFILER_LUA, luaTime); 
+
+    
+    uint32_t controlsStart = gpu.now();
     m_controls.HandleControls(m_playerPosition, playerRotationX, playerRotationY, playerRotationZ, false, 1);
+    
+    gpu.pumpCallbacks();
+    uint32_t controlsEnd = gpu.now();
+    uint32_t controlsTime = controlsEnd - controlsStart;
+    psxsplash::debug::Profiler::getInstance().setSectionTime(psxsplash::debug::PROFILER_CONTROLS, controlsTime); 
+
+    uint32_t navmeshStart = gpu.now();
     if (!freecam) {
         psxsplash::ComputeNavmeshPosition(m_playerPosition, *m_navmeshes[0],
                                           static_cast<psyqo::FixedPoint<12>>(m_playerHeight));
     }
+    gpu.pumpCallbacks();
+    uint32_t navmeshEnd = gpu.now();
+    uint32_t navmeshTime = navmeshEnd - navmeshStart;
+    psxsplash::debug::Profiler::getInstance().setSectionTime(psxsplash::debug::PROFILER_NAVMESH, navmeshTime); 
 
     m_currentCamera.SetPosition(static_cast<psyqo::FixedPoint<12>>(m_playerPosition.x),
                                 static_cast<psyqo::FixedPoint<12>>(m_playerPosition.y),
                                 static_cast<psyqo::FixedPoint<12>>(m_playerPosition.z));
     m_currentCamera.SetRotation(playerRotationX, playerRotationY, playerRotationZ);
 
-    L.OnCollision(m_gameObjects[1], m_gameObjects[0]); // Example call, replace with actual logic
+    psxsplash::debug::Profiler::getInstance().dumpToTTY();
+
+
+
 }

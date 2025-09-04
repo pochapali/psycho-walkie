@@ -4,6 +4,7 @@
 
 #include <psyqo/trigonometry.hh>
 #include <psyqo/vector.hh>
+#include <psyqo/gpu.hh>
 
 #include "camera.hh"
 #include "controls.hh"
@@ -15,7 +16,7 @@ namespace psxsplash {
 class SceneManager {
   public:
     void InitializeScene(uint8_t* splashpackData);
-    void GameTick();
+    void GameTick(psyqo::GPU &gpu);
 
   private:
     psxsplash::Lua L;

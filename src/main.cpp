@@ -66,8 +66,8 @@ void MainScene::frame() {
     }
 
     mainScene.m_lastFrameCounter = currentFrameCounter;
-
-    m_sceneManager.GameTick();
+    
+    m_sceneManager.GameTick(gpu());
 
     app.m_font.chainprintf(gpu(), {{.x = 2, .y = 2}}, {{.r = 0xff, .g = 0xff, .b = 0xff}}, "FPS: %i",
                            gpu().getRefreshRate() / deltaTime);
