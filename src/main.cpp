@@ -15,6 +15,8 @@
 #include "renderer.hh"
 #include "splashpack.hh"
 
+#include "mainScreen.cpp"
+
 // Data from the splashpack
 extern uint8_t _binary_output_bin_start[];
 
@@ -60,6 +62,7 @@ class MainScene final : public psyqo::Scene {
 
 PSXSplash app;
 MainScene mainScene;
+MainScreen mainScreen;
 
 }  // namespace
 
@@ -78,7 +81,8 @@ void PSXSplash::prepare() {
 void PSXSplash::createScene() {
     m_font.uploadSystemFont(gpu());
     m_input.initialize();
-    pushScene(&mainScene);
+    pushScene(&mainScreen);
+    //pushScene(&mainScene);
 }
 
 void MainScene::start(StartReason reason) {
@@ -137,9 +141,10 @@ void MainScene::frame() {
         m_sprinting = false;
     }
 
+    /*
     if (app.m_input.isButtonPressed(psyqo::AdvancedPad::Pad::Pad1a, psyqo::AdvancedPad::Button::L3)) {
         m_sprinting = true;
-    }
+    }*/
 
     psyqo::FixedPoint<12> speed = m_sprinting ? sprintSpeed : moveSpeed;
 
