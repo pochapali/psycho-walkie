@@ -163,12 +163,13 @@ void MainScene::frame() {
         m_mainCamera.MoveZ((m_trig.sin(camRotY) * strafe));
     }
 
+    /*
     if (app.m_input.isButtonPressed(psyqo::AdvancedPad::Pad::Pad1a, psyqo::AdvancedPad::Button::L1)) {
         m_mainCamera.MoveY(speed * deltaTime);
     }
     if (app.m_input.isButtonPressed(psyqo::AdvancedPad::Pad::Pad1a, psyqo::AdvancedPad::Button::R1)) {
         m_mainCamera.MoveY(-speed * deltaTime);
-    }
+    }*/
 
     if (!m_freecam) {
         psyqo::Vec3 adjustedPosition =
