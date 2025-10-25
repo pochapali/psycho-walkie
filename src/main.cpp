@@ -7,6 +7,8 @@
 #include <psyqo/gpu.hh>
 #include <psyqo/scene.hh>
 #include <psyqo/trigonometry.hh>
+#include <psyqo/primitives.hh>
+
 
 #include "EASTL/algorithm.h"
 #include "camera.hh"
@@ -15,7 +17,8 @@
 #include "renderer.hh"
 #include "splashpack.hh"
 
-#include "mainScreen.cpp"
+#include "rand.cpp"
+
 
 // Data from the splashpack
 extern uint8_t _binary_output_bin_start[];
@@ -33,6 +36,8 @@ class PSXSplash final : public psyqo::Application {
     psxsplash::SplashPackLoader m_loader;
 
     psyqo::Font<> m_font;
+
+    Rand m_rand;
 
     psyqo::AdvancedPad m_input;
     static constexpr uint8_t m_stickDeadzone = 0x30;
@@ -60,6 +65,17 @@ class MainScene final : public psyqo::Scene {
     bool m_renderSelect = false;
 };
 
+
+class MainScreen final : public psyqo::Scene  {
+    void start(StartReason reason) override;
+    void frame() override;
+    void teardown(TearDownReason reason) override;
+
+    void showText();
+
+    bool m_buttonPressed = false;
+};
+
 PSXSplash app;
 MainScene mainScene;
 MainScreen mainScreen;
@@ -82,6 +98,7 @@ void PSXSplash::createScene() {
     m_font.uploadSystemFont(gpu());
     m_input.initialize();
     pushScene(&mainScreen);
+    
     //pushScene(&mainScene);
 }
 
@@ -112,6 +129,77 @@ void MainScene::start(StartReason reason) {
         m_freecam = true;
     }
 }
+
+
+
+
+
+//main screen shit 
+void MainScreen::start(StartReason reason){
+    app.m_input.setOnEvent([this](const psyqo::AdvancedPad::Event& event) {
+        if (event.type == psyqo::AdvancedPad::Event::ButtonReleased) {
+            m_buttonPressed = true;
+        }
+    });
+}
+
+void MainScreen::frame(){
+
+    gpu().clear();
+    showText();
+
+    if (m_buttonPressed) {
+        m_buttonPressed = false;
+        pushScene(&mainScene);
+    }
+}
+
+void MainScreen::teardown(TearDownReason reason){
+    app.m_input.setOnEvent(nullptr);
+}
+
+struct MyFragment {
+    uint32_t head;
+    psyqo::Prim::Rectangle rects[5];
+    size_t getActualFragmentSize() const {
+        return sizeof(rects) /  sizeof(uint32_t);
+    }
+};
+
+
+void MainScreen::showText(){
+    auto& font = app.m_font;
+
+
+    MyFragment fragment;
+    fragment.rects[0].position = {{.x = app.m_rand.rand<50>(), .y = app.m_rand.rand<50>()}};
+    fragment.rects[0].size = {{.w = 48, .h = 48}};
+    fragment.rects[0].setColor({{.r = gpu().getFrameCount() % 255, .g = gpu().getFrameCount() % 255, .b = gpu().getFrameCount() % 255}});
+    fragment.rects[1].position = {{.x = 72, .y = gpu().getFrameCount() % app.m_rand.rand<50>()}};
+    fragment.rects[1].size = {{.w = gpu().getFrameCount() % app.m_rand.rand<50>(), .h = 96}};
+    fragment.rects[1].setColor({{.r = gpu().getFrameCount() % 255, .g = gpu().getFrameCount() % 255, .b = gpu().getFrameCount() % 255}});
+    fragment.rects[2].position = {{.x = app.m_rand.rand<200>(), .y = app.m_rand.rand<144>()}};
+    fragment.rects[2].size = {{.w = 192, .h = gpu().getFrameCount() % app.m_rand.rand<50>()}};
+    fragment.rects[2].setColor({{.r = gpu().getFrameCount() % 255, .g = gpu().getFrameCount() % 255, .b = gpu().getFrameCount() % 255}});
+    
+    fragment.rects[3].position = {{.x = app.m_rand.rand<50>(), .y = app.m_rand.rand<50>()}};
+    fragment.rects[3].size = {{.w = gpu().getFrameCount() % 10, .h = app.m_rand.rand<50>()}};
+    fragment.rects[3].setColor({{.r = gpu().getFrameCount() % 255, .g = 124, .b = 79}});
+    fragment.rects[4].position = {{.x = app.m_rand.rand<50>(), .y = app.m_rand.rand<50>()}};
+    fragment.rects[4].size = {{.w = 96, .h = gpu().getFrameCount() % app.m_rand.rand<50>()}};
+    fragment.rects[4].setColor({{.r = gpu().getFrameCount() % 255, .g = gpu().getFrameCount() % 255, .b = gpu().getFrameCount() % 255}});
+    gpu().sendFragment(fragment);
+    
+    font.print(gpu(), "TURBO DRUGS", {{.x = 25, .y = 25}}, {{.r = 0xff, .g = 0x00, .b = 0x00}});
+    font.print(gpu(), "press any button", {{.x = 25, .y = 45}}, {{.r = 0xff, .g = 0xff, .b = 0xff}});
+}
+
+
+
+
+
+
+
 
 void MainScene::frame() {
     uint32_t beginFrame = gpu().now();
@@ -190,6 +278,8 @@ void MainScene::frame() {
     
     app.m_font.chainprintf(gpu(), {{.x = 2, .y = 2}}, {{.r = 0xff, .g = 0xff, .b = 0xff}}, "FPS: %i",
                                  gpu().getRefreshRate() / deltaTime);
+                                 
+    //app.m_font.print(gpu(), "Hello", {{.x = 5, .y = 5}}, {{.r = 0xff, .g = 0x00, .b = 0x00}});
 
     gpu().pumpCallbacks();
     uint32_t endFrame = gpu().now();
