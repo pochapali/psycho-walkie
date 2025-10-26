@@ -8,7 +8,9 @@ src/splashpack.cpp \
 src/camera.cpp \
 src/gtemath.cpp \
 src/navmesh.cpp \
-output.o
+output1.o \
+output2.o \
+output3.o
 
 include third_party/nugget/psyqo/psyqo.mk
 
