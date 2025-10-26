@@ -47,7 +47,9 @@ void SplashPackLoader::LoadSplashpack(uint8_t *data) {
     playerHeight = header->playerHeight;
 
     gameObjects.reserve(header->gameObjectCount);
+    gameObjects.clear();
     navmeshes.reserve(header->navmeshCount);
+    navmeshes.clear();
 
     uint8_t *curentPointer = data + sizeof(psxsplash::SPLASHPACKFileHeader);
 
