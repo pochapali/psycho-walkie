@@ -20,19 +20,22 @@
 #include "rand.cpp"
 
 // Data from the splashpack
-extern uint8_t _binary_output1_bin_start[];
-extern uint8_t _binary_output2_bin_start[];
-extern uint8_t _binary_output3_bin_start[];
+extern uint8_t _binary_jesseandkalleoutput_bin_start[];
+extern uint8_t _binary_niilosnailoutput_bin_start[];
+extern uint8_t _binary_niilotoiletoutput_bin_start[];
+extern uint8_t _binary_kalle_bin_start[];
+
 
 // the vector has pointers to the splashpacks in the REVERSED order of how they
 // will be loaded
 eastl::vector<uint8_t *> splashpacks = {
-    _binary_output3_bin_start,
-    _binary_output2_bin_start,
-    _binary_output1_bin_start,
+    _binary_kalle_bin_start,
+    _binary_niilosnailoutput_bin_start,
+    _binary_niilotoiletoutput_bin_start,
+    _binary_jesseandkalleoutput_bin_start,
 };
 
-// uint8_t* current_bin_start = _binary_output1_bin_start;
+uint8_t current_bin_start_index = splashpacks.size() - 1;
 namespace {
 
 using namespace psyqo::fixed_point_literals;
@@ -57,7 +60,6 @@ public:
 class MainScene final : public psyqo::Scene {
   void frame() override;
   void start(StartReason reason) override;
-  void teardown(TearDownReason reason) override;
 
   psxsplash::Camera m_mainCamera;
   psyqo::Angle camRotX, camRotY, camRotZ;
@@ -81,7 +83,6 @@ class MainScene final : public psyqo::Scene {
 class MainScreen final : public psyqo::Scene  {
     void start(StartReason reason) override;
     void frame() override;
-    void teardown(TearDownReason reason) override;
 
     void showText();
 
@@ -91,7 +92,6 @@ class MainScreen final : public psyqo::Scene  {
 PSXSplash app;
 MainScene mainScene;
 MainScreen mainScreen;
-MainScene secondScene;
 
 } // namespace
 
@@ -116,8 +116,11 @@ void PSXSplash::createScene() {
 }
 
 void MainScene::start(StartReason reason) {
-  app.m_loader.LoadSplashpack(splashpacks.back());
-  splashpacks.pop_back();
+app.m_loader.LoadSplashpack(splashpacks.at(current_bin_start_index));
+    if (current_bin_start_index == 0) {
+        current_bin_start_index = splashpacks.size() - 1;
+    }
+  current_bin_start_index--;
   psxsplash::Renderer::GetInstance().SetCamera(m_mainCamera);
 
   m_mainCamera.SetPosition(
@@ -158,7 +161,7 @@ void MainScene::start(StartReason reason) {
             //     .set(psyqo::GPU::MiscSetting::CLEAR_VRAM);
             // gpu().initialize(config);
             // app.prepare();
-            app.pushScene(&secondScene);
+            app.pushScene(&mainScene);
           }
         }
       }});
@@ -192,9 +195,6 @@ void MainScreen::frame(){
     }
 }
 
-void MainScreen::teardown(TearDownReason reason){
-    app.m_input.setOnEvent(nullptr);
-}
 
 struct MyFragment {
     uint32_t head;
