@@ -91,6 +91,7 @@ class MainScreen final : public psyqo::Scene  {
 PSXSplash app;
 MainScene mainScene;
 MainScreen mainScreen;
+MainScene secondScene;
 
 } // namespace
 
